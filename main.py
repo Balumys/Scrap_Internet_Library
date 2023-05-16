@@ -3,13 +3,13 @@ from requests import get
 from requests import HTTPError
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
+from urllib.parse import urljoin
 
 
 def download_txt(response, book_details, folder='books/'):
     sanitized_book_name = sanitize_filename(book_details['title'])
     with open(f'book/{sanitized_book_name}.txt', 'w') as file:
         file.write(response.text)
-        file.close()
 
 
 def fetch_book_details(book_id):
@@ -17,9 +17,13 @@ def fetch_book_details(book_id):
     response = get(f'{url}/b{book_id}')
     soup = BeautifulSoup(response.text, 'lxml')
     book_header = soup.find('h1').text.split('::')
+    book_cover = soup.find('div', class_='bookimage').find('img')['src']
+    book_cover = urljoin('https://tululu.org', book_cover)
+    print(book_cover)
     book_details = {
         'title': book_header[0].strip(),
-        'author': book_header[1].strip()
+        'author': book_header[1].strip(),
+        'covert': book_cover
     }
     return book_details
 
