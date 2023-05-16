@@ -32,12 +32,14 @@ def fetch_book_details(book_id):
     book_cover = soup.find('div', class_='bookimage').find('img')['src']
     book_cover = urljoin('https://tululu.org', book_cover)
     book_comments_soup = soup.find_all('div', class_='texts')
+    book_genres_soup = soup.find('span', class_='d_book').find_all('a')
 
     book_details = {
         'title': book_header[0].strip(),
         'author': book_header[1].strip(),
         'cover_link': book_cover,
-        'comments': [book_comment.find('span').text for book_comment in book_comments_soup]
+        'comments': [book_comment.find('span').text for book_comment in book_comments_soup],
+        'book_genre': [book_genre.text for book_genre in book_genres_soup]
     }
     return book_details
 
