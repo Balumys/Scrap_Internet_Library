@@ -90,6 +90,7 @@ if __name__ == "__main__":
 
         processed_books += 1
         percentage = (processed_books / total_books) * 100
-        progress_string = f"Progress: {percentage:.2f}%"
+        progress_string = f"Progress: {percentage:.2f}% "
         sys.stdout.write("\r" + progress_string)
         sys.stdout.flush()
+    print()
