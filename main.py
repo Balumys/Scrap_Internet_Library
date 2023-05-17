@@ -1,9 +1,20 @@
+import argparse
 import os
+
 from requests import get
 from requests import HTTPError
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
 from urllib.parse import urljoin
+
+
+def get_arguments():
+    parser = argparse.ArgumentParser(
+        description="Download books from https://tululu.org/")
+    parser.add_argument("start_id", nargs='?', default=1,  type=int, help="Specify start id book (dafault = 1)")
+    parser.add_argument("end_id", nargs='?', default=10, type=int, help="Specify end id book (dafault = 10)")
+    args = parser.parse_args()
+    return args
 
 
 def download_image(book_details, folder='images/'):
@@ -41,6 +52,7 @@ def fetch_book_details(book_id):
         'comments': [book_comment.find('span').text for book_comment in book_comments_soup],
         'book_genre': [book_genre.text for book_genre in book_genres_soup]
     }
+
     return book_details
 
 
@@ -64,8 +76,10 @@ def fetch_book(url, book_id):
 if __name__ == "__main__":
     url = 'https://tululu.org/txt.php'
 
-    for book_id in range(1, 11):
+    args = get_arguments()
+
+    for book_id in range(args.start_id, args.end_id):
         try:
             fetch_book(url, str(book_id))
         except HTTPError as err:
-            print(err)
+            pass
