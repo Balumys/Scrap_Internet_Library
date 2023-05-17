@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 from requests import get
 from requests import HTTPError
@@ -78,8 +79,17 @@ if __name__ == "__main__":
 
     args = get_arguments()
 
+    total_books = args.end_id - args.start_id
+    processed_books = 0
+
     for book_id in range(args.start_id, args.end_id):
         try:
             fetch_book(url, str(book_id))
         except HTTPError as err:
             pass
+
+        processed_books += 1
+        percentage = (processed_books / total_books) * 100
+        progress_string = f"Progress: {percentage:.2f}%"
+        sys.stdout.write("\r" + progress_string)
+        sys.stdout.flush()
