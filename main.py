@@ -2,18 +2,24 @@ import argparse
 import logging
 import os
 import sys
+import time
 
 from requests import get
-from requests import HTTPError
+from requests import HTTPError, ConnectionError
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
 from urllib.parse import urljoin
 
 
+def get_book_html_page(url, book_id):
+    response = get(f'{url}/b{book_id}')
+    return response
+
+
 def get_arguments():
     parser = argparse.ArgumentParser(
         description="Download books from https://tululu.org/")
-    parser.add_argument("start_id", nargs='?', default=1,  type=int, help="Specify start id book (dafault = 1)")
+    parser.add_argument("start_id", nargs='?', default=1, type=int, help="Specify start id book (dafault = 1)")
     parser.add_argument("end_id", nargs='?', default=10, type=int, help="Specify end id book (dafault = 10)")
     args = parser.parse_args()
     return args
@@ -36,10 +42,7 @@ def download_txt(response, book_details, folder='books/'):
         file.write(response.text)
 
 
-def fetch_book_details(book_id):
-    url = 'https://tululu.org'
-    response = get(f'{url}/b{book_id}')
-
+def fetch_book_details(response):
     soup = BeautifulSoup(response.text, 'lxml')
     book_header = soup.find('h1').text.split('::')
     book_cover = soup.find('div', class_='bookimage').find('img')['src']
@@ -70,25 +73,47 @@ def fetch_book(url, book_id):
     response = get(url, params=payload)
     response.raise_for_status()
     check_for_redirect(response)
-    book_details = fetch_book_details(book_id)
-    download_txt(response, book_details)
-    download_image(book_details)
+    return response
 
 
 if __name__ == "__main__":
+    MAX_RETRIES = 3
+    RETRY_DELAY = 2
+
     logging.basicConfig(filename='error.log', level=logging.ERROR)
-    url = 'https://tululu.org/txt.php'
+    url_book = 'https://tululu.org/txt.php'
+    url_book_page = 'https://tululu.org'
 
     args = get_arguments()
 
     total_books = args.end_id - args.start_id
     processed_books = 0
+    retries = 0
 
     for book_id in range(args.start_id, args.end_id):
+
         try:
-            fetch_book(url, str(book_id))
+            response = fetch_book(url_book, str(book_id))
+            book_details = fetch_book_details(
+                get_book_html_page(
+                    url_book_page,
+                    book_id
+                )
+            )
+            download_txt(response, book_details)
+            download_image(book_details)
         except HTTPError as err:
             logging.error(f"Error fetching book {book_id}: {err}")
+        except ConnectionError as err:
+            while retries < MAX_RETRIES:
+                retries += 1
+                logging.error(f"Connection error: {err}. Retrying in {RETRY_DELAY} seconds")
+                time.sleep(RETRY_DELAY)
+
+            if retries == MAX_RETRIES:
+                error_message = f"Failed to fetch book {book_id} after {MAX_RETRIES} retries."
+                logging.error(error_message)
+                sys.exit(error_message)
 
         processed_books += 1
         percentage = (processed_books / total_books) * 100
