@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import sys
 
@@ -75,6 +76,7 @@ def fetch_book(url, book_id):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(filename='error.log', level=logging.ERROR)
     url = 'https://tululu.org/txt.php'
 
     args = get_arguments()
@@ -86,7 +88,7 @@ if __name__ == "__main__":
         try:
             fetch_book(url, str(book_id))
         except HTTPError as err:
-            pass
+            logging.error(f"Error fetching book {book_id}: {err}")
 
         processed_books += 1
         percentage = (processed_books / total_books) * 100
