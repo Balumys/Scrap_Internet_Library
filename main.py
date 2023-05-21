@@ -9,6 +9,16 @@ from requests import HTTPError, ConnectionError
 from bs4 import BeautifulSoup
 from pathvalidate import sanitize_filename
 from urllib.parse import urljoin
+from dataclasses import dataclass
+
+
+@dataclass
+class BookDetails:
+    title: str
+    author: str
+    cover_link: str
+    comments: list[str]
+    book_genre: list[str]
 
 
 def check_for_redirect(response):
@@ -26,19 +36,19 @@ def get_arguments():
     return args
 
 
-def download_image(book_details, folder='images/'):
+def download_image(book: BookDetails, folder='images/'):
     os.makedirs(folder, exist_ok=True)
-    response = get(book_details['cover_link'])
+    response = get(book.cover_link)
     response.raise_for_status()
-    filename = os.path.basename(book_details['cover_link'])
+    filename = os.path.basename(book.cover_link)
     _, extension = os.path.splitext(filename)
-    with open(f'{folder}{book_details["title"]}{extension}', 'wb') as file:
+    with open(f'{folder}{book.title}{extension}', 'wb') as file:
         file.write(response.content)
 
 
-def download_txt(response, book_details, folder='books/'):
+def download_txt(response, book: BookDetails, folder='books/'):
     os.makedirs(folder, exist_ok=True)
-    sanitized_book_name = sanitize_filename(book_details['title'])
+    sanitized_book_name = sanitize_filename(book.title)
     with open(f'{folder}{sanitized_book_name}.txt', 'w') as file:
         file.write(response.text)
 
@@ -53,18 +63,18 @@ def get_book_html_page(url, book_id):
 def fetch_book_details(response):
     soup = BeautifulSoup(response.text, 'lxml')
     book_header = soup.find('h1').text.split('::')
-    book_cover = soup.find('div', class_='bookimage').find('img')['src']
-    book_cover = urljoin('https://tululu.org', book_cover)
+    book_cover_link = soup.find('div', class_='bookimage').find('img')['src']
+    book_cover_link = urljoin(response.url, book_cover_link)
     book_comments_soup = soup.find_all('div', class_='texts')
     book_genres_soup = soup.find('span', class_='d_book').find_all('a')
 
-    book_details = {
-        'title': book_header[0].strip(),
-        'author': book_header[1].strip(),
-        'cover_link': book_cover,
-        'comments': [book_comment.find('span').text for book_comment in book_comments_soup],
-        'book_genre': [book_genre.text for book_genre in book_genres_soup]
-    }
+    book_details = BookDetails(
+        title=book_header[0].strip(),
+        author=book_header[1].strip(),
+        cover_link=book_cover_link,
+        comments=[book_comment.find('span').text for book_comment in book_comments_soup],
+        book_genre=[book_genre.text for book_genre in book_genres_soup]
+    )
 
     return book_details
 
@@ -96,7 +106,6 @@ if __name__ == "__main__":
     for book_id in range(args.start_id, args.end_id):
 
         try:
-            get_book_html_page(url_book_page, 2)
             response = fetch_book(url_book, str(book_id))
             book_details = fetch_book_details(
                 get_book_html_page(
