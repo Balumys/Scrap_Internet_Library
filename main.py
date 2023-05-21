@@ -11,9 +11,10 @@ from pathvalidate import sanitize_filename
 from urllib.parse import urljoin
 
 
-def get_book_html_page(url, book_id):
-    response = get(f'{url}/b{book_id}')
-    return response
+def check_for_redirect(response):
+    for redirect in response.history:
+        if redirect.status_code == 302:
+            raise HTTPError("The request was redirected.")
 
 
 def get_arguments():
@@ -42,6 +43,13 @@ def download_txt(response, book_details, folder='books/'):
         file.write(response.text)
 
 
+def get_book_html_page(url, book_id):
+    response = get(f'{url}/b{book_id}')
+    response.raise_for_status()
+    check_for_redirect(response)
+    return response
+
+
 def fetch_book_details(response):
     soup = BeautifulSoup(response.text, 'lxml')
     book_header = soup.find('h1').text.split('::')
@@ -59,11 +67,6 @@ def fetch_book_details(response):
     }
 
     return book_details
-
-
-def check_for_redirect(response):
-    if response.history:
-        raise HTTPError("The request was redirected.")
 
 
 def fetch_book(url, book_id):
@@ -93,6 +96,7 @@ if __name__ == "__main__":
     for book_id in range(args.start_id, args.end_id):
 
         try:
+            get_book_html_page(url_book_page, 2)
             response = fetch_book(url_book, str(book_id))
             book_details = fetch_book_details(
                 get_book_html_page(
