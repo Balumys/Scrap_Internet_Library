@@ -17,6 +17,7 @@ pip install -r requirements.txt
 ## Usage
 As described above, scripts give you possibility to download books.
 Script have 2 arguments *start_id* and *end_id*, to give to you control how many books you want download. By default, it's set to *1 to 10*.
+All error will be in *error.log* file
 
 Example:
 ```bash
