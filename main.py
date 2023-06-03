@@ -11,6 +11,8 @@ from pathvalidate import sanitize_filename
 from urllib.parse import urljoin
 from dataclasses import dataclass
 
+MAX_RETRIES = 3
+RETRY_DELAY = 2
 
 @dataclass
 class BookDetails:
@@ -78,10 +80,19 @@ def fetch_book_details(response):
     return book_details
 
 
-if __name__ == "__main__":
-    MAX_RETRIES = 3
-    RETRY_DELAY = 2
+def download_book():
+    response = fetch_book_response(book_url, str(book_id))
+    book_details = fetch_book_details(
+        fetch_book_response(
+            book_page_url,
+            book_id
+        )
+    )
+    download_txt(response, book_details)
+    download_image(book_details)
 
+
+if __name__ == "__main__":
     logging.basicConfig(filename='error.log', level=logging.ERROR)
     book_url = 'https://tululu.org/txt.php?id='
     book_page_url = 'https://tululu.org/b'
@@ -95,34 +106,23 @@ if __name__ == "__main__":
         retries = 0
 
         try:
-            response = fetch_book_response(book_url, str(book_id))
-            book_details = fetch_book_details(
-                fetch_book_response(
-                    book_page_url,
-                    book_id
-                )
-            )
-            download_txt(response, book_details)
-            download_image(book_details)
+            download_book()
         except HTTPError as err:
             logging.error(f"Error fetching book {book_id}: {err}")
         except ConnectionError as err:
             while retries < MAX_RETRIES:
                 retries += 1
                 logging.error(f"Connection error: {err}. Retrying in {RETRY_DELAY} seconds")
-                time.sleep(RETRY_DELAY)
-
             try:
-                response = fetch_book_response(book_url, str(book_id))
-                book_details = fetch_book_details(fetch_book_response(book_page_url, book_id))
-                download_txt(response, book_details)
-                download_image(book_details)
+                download_book()
                 break
             except (HTTPError, ConnectionError) as err:
                 if retries == MAX_RETRIES:
                     error_message = f"Failed to fetch book {book_id} after {MAX_RETRIES} retries."
                     logging.error(error_message)
                     sys.exit(error_message)
+
+                time.sleep(RETRY_DELAY)
 
         processed_books += 1
         percentage = (processed_books / total_books) * 100
