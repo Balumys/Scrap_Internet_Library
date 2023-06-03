@@ -52,7 +52,7 @@ def download_txt(response, book: BookDetails, folder='books/'):
         file.write(response.text)
 
 
-def fetch_book(url, book_id):
+def fetch_book_response(url, book_id):
     response = get(f'{url}{book_id}/')
     response.raise_for_status()
     check_for_redirect(response)
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     RETRY_DELAY = 2
 
     logging.basicConfig(filename='error.log', level=logging.ERROR)
-    book_url = 'https://tululu.org/?id='
+    book_url = 'https://tululu.org/txt.php?id='
     book_page_url = 'https://tululu.org/b'
 
     args = get_arguments()
@@ -95,9 +95,9 @@ if __name__ == "__main__":
         retries = 0
 
         try:
-            response = fetch_book(book_url, str(book_id))
+            response = fetch_book_response(book_url, str(book_id))
             book_details = fetch_book_details(
-                fetch_book(
+                fetch_book_response(
                     book_page_url,
                     book_id
                 )
@@ -113,8 +113,8 @@ if __name__ == "__main__":
                 time.sleep(RETRY_DELAY)
 
             try:
-                response = fetch_book(book_url, str(book_id))
-                book_details = fetch_book_details(fetch_book(book_page_url, book_id))
+                response = fetch_book_response(book_url, str(book_id))
+                book_details = fetch_book_details(fetch_book_response(book_page_url, book_id))
                 download_txt(response, book_details)
                 download_image(book_details)
                 break
