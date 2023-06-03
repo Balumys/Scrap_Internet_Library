@@ -14,6 +14,7 @@ from dataclasses import dataclass
 MAX_RETRIES = 3
 RETRY_DELAY = 2
 
+
 @dataclass
 class BookDetails:
     title: str
@@ -54,8 +55,14 @@ def download_txt(response, book: BookDetails, folder='books/'):
         file.write(response.text)
 
 
-def fetch_book_response(url, book_id):
-    response = get(f'{url}{book_id}/')
+def fetch_book_response(url, book_id, param_key='id'):
+    if param_key == 'id':
+        payload = {
+            'id': book_id
+        }
+        response = get(url, params=payload)
+    else:
+        response = get(f'{url}/b{book_id}/')
     response.raise_for_status()
     check_for_redirect(response)
     return response
@@ -85,7 +92,8 @@ def download_book():
     book_details = fetch_book_details(
         fetch_book_response(
             book_page_url,
-            book_id
+            book_id,
+            'b'
         )
     )
     download_txt(response, book_details)
@@ -94,8 +102,8 @@ def download_book():
 
 if __name__ == "__main__":
     logging.basicConfig(filename='error.log', level=logging.ERROR)
-    book_url = 'https://tululu.org/txt.php?id='
-    book_page_url = 'https://tululu.org/b'
+    book_url = 'https://tululu.org/txt.php'
+    book_page_url = 'https://tululu.org'
 
     args = get_arguments()
 
