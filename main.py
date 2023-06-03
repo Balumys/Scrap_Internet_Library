@@ -22,9 +22,8 @@ class BookDetails:
 
 
 def check_for_redirect(response):
-    for redirect in response.history:
-        if redirect.status_code == 302:
-            raise HTTPError("The request was redirected.")
+    if response.history:
+        raise HTTPError("The request was redirected.")
 
 
 def get_arguments():
@@ -53,8 +52,8 @@ def download_txt(response, book: BookDetails, folder='books/'):
         file.write(response.text)
 
 
-def get_book_html_page(url, book_id):
-    response = get(f'{url}/b{book_id}')
+def fetch_book(url, book_id):
+    response = get(f'{url}{book_id}/')
     response.raise_for_status()
     check_for_redirect(response)
     return response
@@ -79,37 +78,27 @@ def fetch_book_details(response):
     return book_details
 
 
-def fetch_book(url, book_id):
-    payload = {
-        'id': book_id
-    }
-    response = get(url, params=payload)
-    response.raise_for_status()
-    check_for_redirect(response)
-    return response
-
-
 if __name__ == "__main__":
     MAX_RETRIES = 3
     RETRY_DELAY = 2
 
     logging.basicConfig(filename='error.log', level=logging.ERROR)
-    url_book = 'https://tululu.org/txt.php'
-    url_book_page = 'https://tululu.org'
+    book_url = 'https://tululu.org/?id='
+    book_page_url = 'https://tululu.org/b'
 
     args = get_arguments()
 
     total_books = args.end_id - args.start_id
     processed_books = 0
-    retries = 0
 
     for book_id in range(args.start_id, args.end_id):
+        retries = 0
 
         try:
-            response = fetch_book(url_book, str(book_id))
+            response = fetch_book(book_url, str(book_id))
             book_details = fetch_book_details(
-                get_book_html_page(
-                    url_book_page,
+                fetch_book(
+                    book_page_url,
                     book_id
                 )
             )
@@ -123,10 +112,17 @@ if __name__ == "__main__":
                 logging.error(f"Connection error: {err}. Retrying in {RETRY_DELAY} seconds")
                 time.sleep(RETRY_DELAY)
 
-            if retries == MAX_RETRIES:
-                error_message = f"Failed to fetch book {book_id} after {MAX_RETRIES} retries."
-                logging.error(error_message)
-                sys.exit(error_message)
+            try:
+                response = fetch_book(book_url, str(book_id))
+                book_details = fetch_book_details(fetch_book(book_page_url, book_id))
+                download_txt(response, book_details)
+                download_image(book_details)
+                break
+            except (HTTPError, ConnectionError) as err:
+                if retries == MAX_RETRIES:
+                    error_message = f"Failed to fetch book {book_id} after {MAX_RETRIES} retries."
+                    logging.error(error_message)
+                    sys.exit(error_message)
 
         processed_books += 1
         percentage = (processed_books / total_books) * 100
