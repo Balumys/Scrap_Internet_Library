@@ -18,7 +18,7 @@ class BookDetails:
     author: str
     cover_link: str
     comments: list[str]
-    book_genre: list[str]
+    book_genres: list[str]
 
 
 def check_for_redirect(response):
@@ -72,7 +72,7 @@ def fetch_book_details(response):
         author=book_header[1].strip(),
         cover_link=book_cover_link,
         comments=[book_comment.find('span').text for book_comment in book_comments_soup],
-        book_genre=[book_genre.text for book_genre in book_genres_soup]
+        book_genres=[book_genre.text for book_genre in book_genres_soup]
     )
 
     return book_details
